@@ -1,5 +1,5 @@
 exps/**
-wandb
-.vscode
-**/__pycache__/**
+wandb/
+.vscode/
+**/__pycache__/
 **.ipynb
