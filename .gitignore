@@ -1,0 +1,5 @@
+exps/**
+wandb
+.vscode
+**/__pycache__/**
+**.ipynb
