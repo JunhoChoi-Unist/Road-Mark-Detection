@@ -190,6 +190,27 @@ if __name__ == "__main__":
                 step=epoch,
             )
 
+        if best_loss > val_loss_epoch:
+            best_loss = val_loss_epoch
+            patience = 0
+        else:
+            patience += 1
+            if phase == 1:
+                if patience > 3:
+                    phase = 2
+                    patience = 0
+                    # TODO: Test if fixed or not
+                    current_lr = optimizer_0.param_groups[0]["lr"]
+                    optimizer_2.param_groups[0]["lr"] = current_lr
+                    optimizer_3.param_groups[0]["lr"] = current_lr
+                    optimizer_4.param_groups[0]["lr"] = current_lr
+
+            elif phase == 2:
+                if patience > 5:    
+                    print(f"Early stopping!\n\t @ Epoch: {epoch:2}\n\t Best Loss record: {best_loss:.4f}")
+                    break # EARLY-STOPPING
+                
+
         # reduce the learning rates...?
         for scheduler in schedulers:
             scheduler.step()
