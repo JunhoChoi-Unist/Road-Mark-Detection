@@ -111,16 +111,17 @@ if __name__ == "__main__":
         train_loss_ml_epoch /= len(train_dl.dataset)
         train_loss_vp_epoch /= len(train_dl.dataset)
 
-        run.log(
-            {
-                "train loss": train_loss_epoch,
-                "train l_reg": train_loss_reg_epoch,
-                "train l_om": train_loss_om_epoch,
-                "train l_ml": train_loss_ml_epoch,
-                "train l_vp": train_loss_vp_epoch,
-            },
-            step=epoch,
-        )
+        if WANDB:
+            run.log(
+                {
+                    "train loss": train_loss_epoch,
+                    "train l_reg": train_loss_reg_epoch,
+                    "train l_om": train_loss_om_epoch,
+                    "train l_ml": train_loss_ml_epoch,
+                    "train l_vp": train_loss_vp_epoch,
+                },
+                step=epoch,
+            )
         # End of the Training Loop
 
         # Start of the Validation Loop
@@ -155,16 +156,17 @@ if __name__ == "__main__":
             val_loss_ml_epoch /= len(val_dl.dataset)
             val_loss_vp_epoch /= len(val_dl.dataset)
 
-            run.log(
-                {
-                    "val loss": val_loss_epoch,
-                    "val l_reg": val_loss_reg_epoch,
-                    "val l_om": val_loss_om_epoch,
-                    "val l_ml": val_loss_ml_epoch,
-                    "val l_vp": val_loss_vp_epoch,
-                },
-                step=epoch,
-            )
+            if WANDB:
+                run.log(
+                    {
+                        "val loss": val_loss_epoch,
+                        "val l_reg": val_loss_reg_epoch,
+                        "val l_om": val_loss_om_epoch,
+                        "val l_ml": val_loss_ml_epoch,
+                        "val l_vp": val_loss_vp_epoch,
+                    },
+                    step=epoch,
+                )
         # End of the Validation Loop
 
         print(
