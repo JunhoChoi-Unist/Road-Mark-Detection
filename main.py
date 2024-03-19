@@ -34,7 +34,8 @@ if __name__ == "__main__":
     N_CLASSES = 17
 
     model = VPGNet(N_CLASSES).to(DEVICE)
-    criterion = FourTaskLoss()
+    criterion = FourTaskLoss(weights=[1/0.49, 1/0.69, 1/2.89, 1/0.35])
+    # TODO: temporary fix
     optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
     optimizer_1 = torch.optim.Adam(model.gridBox.parameters(), lr=0)
     optimizer_2 = torch.optim.Adam(model.objectMask.parameters(), lr=0)
@@ -176,6 +177,7 @@ if __name__ == "__main__":
         torch.save(
             model.state_dict(), f"{SAVE_PATH}/{epoch:02}-{val_loss_epoch:.4f}.pt"
         )
+        print(f"\t model saved as {SAVE_PATH}/{epoch:02}-{val_loss_epoch:.4f}.pt")
 
         if WANDB:
             run.log(
