@@ -1,33 +1,29 @@
-from cProfile import label
 import torch
-import numpy as np
+import torch.nn as nn
 
-
-def FourTaskLoss(out, seg, vp, device="cuda"):
-    CrossEntropyLoss = torch.nn.CrossEntropyLoss()
-
-    # Object Mask Loss
-    object_mask = (seg > 0).long().to(device)
-    L_om = CrossEntropyLoss(out[1], object_mask)
-    # Multi Label Loss
-    label_mask = torch.nn.functional.max_pool2d(seg, 2)
-    label_mask = label_mask.long().to(device)
-    L_ml = CrossEntropyLoss(out[2], label_mask)
-    # VPP Loss
-    L_vp = CrossEntropyLoss(out[3], vp)
-
-    return L_om, L_ml, L_vp
-
-
-def fourPoints(tt):
-    indices = tt > 0
-
-    # Get the minimum and maximum x and y coordinates
-    min_x, _ = torch.min(indices, dim=0)
-    max_x, _ = torch.max(indices, dim=0)
-
-    # Return the left-top and right-bottom coordinates
-    left_top = (min_x[1].item(), min_x[0].item())
-    right_bottom = (max_x[1].item(), max_x[0].item())
-
-    return *left_top, *right_bottom
+class FourTaskLoss(nn.Module):
+    def __init__(self, weights=None):
+        super(FourTaskLoss, self).__init__()
+        if weights is None:
+            self.weights = torch.tensor([1.0, 1.0, 1.0, 1.0])  # Default weights
+        else:
+            self.weights = torch.tensor(weights)
+    
+    def forward(self, out, gridbox, seg, vpxy):
+        l_reg = nn.L1Loss()(out[0].cpu().detach().numpy, gridbox)
+        om = (seg > 0).long()
+        l_om = nn.CrossEntropyLoss()(out[1].cpu().detach().numpy, om)
+        ml_seg = torch.nn.functional.max_pool2d(seg, 2).long()
+        l_ml = nn.CrossEntropyLoss()(out[2].cpu().detach().numpy, ml_seg)
+        vp = torch.zeros(120,160)
+        vp_x, vp_y = vpxy
+        if vp_x!=0 or vp_y!=0:
+            vp[:vp_y//4,vp_x//4:] = 1
+            vp[:vp_y//4,:vp_x//4] = 2
+            vp[vp_y//4:,:vp_x//4] = 3
+            vp[vp_y//4:,vp_x//4:] = 4
+        l_vp = nn.CrossEntropyLoss()(out[3].cpu().detach().numpy, vp)
+        total_loss = torch.zeros(1, requires_grad=True, device='cuda')
+        for weight, loss in zip(self.weights, [l_reg, l_om, l_ml, l_vp]):
+            total_loss += weight * loss
+        return total_loss
