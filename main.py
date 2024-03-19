@@ -18,8 +18,8 @@ if __name__ == "__main__":
     # test_ds = RoadDataset(test, transform=T.Compose([T.ToTensor()]))
 
     BATCH_SIZE = 14
-    train_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
-    # train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
+    # train_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
+    train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
     val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
 
     import numpy as np
@@ -30,12 +30,11 @@ if __name__ == "__main__":
     EPOCHS = 50
     LEARNING_RATE = 5e-4
     SAVE_PATH = f'exps/{datetime.now().strftime("%m%d-%H%M%S")}'
-    WANDB = False
+    WANDB = True
     N_CLASSES = 17
 
     model = VPGNet(N_CLASSES).to(DEVICE)
     criterion = FourTaskLoss()
-    # TODO: Rewrite it as a nn.Module Class
     optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
     optimizer_1 = torch.optim.Adam(model.gridBox.parameters(), lr=0)
     optimizer_2 = torch.optim.Adam(model.objectMask.parameters(), lr=0)
