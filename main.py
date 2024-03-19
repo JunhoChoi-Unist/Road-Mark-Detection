@@ -13,7 +13,7 @@ if __name__ == "__main__":
     import os
     from datetime import datetime
 
-    # train_ds = RoadDataset(train, transform=T.Compose([T.ToTensor()]))
+    train_ds = RoadDataset(train, transform=T.Compose([T.ToTensor()]))
     val_ds = RoadDataset(val, transform=T.Compose([T.ToTensor()]))
     # test_ds = RoadDataset(test, transform=T.Compose([T.ToTensor()]))
 
@@ -34,7 +34,8 @@ if __name__ == "__main__":
     N_CLASSES = 17
 
     model = VPGNet(N_CLASSES).to(DEVICE)
-    criterion = FourTaskLoss
+    criterion = FourTaskLoss()
+    # TODO: Rewrite it as a nn.Module Class
     optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
     optimizer_1 = torch.optim.Adam(model.gridBox.parameters(), lr=0)
     optimizer_2 = torch.optim.Adam(model.objectMask.parameters(), lr=0)
@@ -75,15 +76,19 @@ if __name__ == "__main__":
             train_loss_vp_epoch,
         ) = (0.0, 0.0, 0.0, 0.0)
         model.train()
-        for i, (rgb, seg, vpxy) in tqdm(enumerate(train_dl), total=len(train_dl)):
+        for i, (rgb, gridbox, seg, vpxy) in tqdm(
+            enumerate(train_dl), total=len(train_dl)
+        ):
             rgb = rgb.to(DEVICE)
-            seg = seg.to(DEVICE)
-            vpxy = vpxy
-
             out = model(rgb)
 
+            # print(f"out[0]: {out[0].shape} {out[0].dtype} {out[0].device}")
+            # print(f"out[1]: {out[1].shape} {out[1].dtype} {out[1].device}")
+            # print(f"out[2]: {out[2].shape} {out[2].dtype} {out[2].device}")
+            # print(f"out[3]: {out[3].shape} {out[3].dtype} {out[3].device}")
+
             train_loss_reg, train_loss_om, train_loss_ml, train_loss_vp = criterion(
-                out, seg, vpxy
+                out, gridbox, seg, vpxy
             )
             train_loss = train_loss_reg + train_loss_om + train_loss_ml + train_loss_vp
             # TODO: Apply weighted sum 1
@@ -130,13 +135,10 @@ if __name__ == "__main__":
         with torch.no_grad():
             for i, (rgb, seg, vpxy) in tqdm(enumerate(val_dl), total=len(val_dl)):
                 rgb = rgb.to(DEVICE)
-                seg = seg.to(DEVICE)
-                vpxy = vpxy
-
                 out = model(rgb)
 
                 val_loss_reg, val_loss_om, val_loss_ml, val_loss_vp = criterion(
-                    out, seg, vpxy
+                    out, gridbox, seg, vpxy
                 )
                 val_loss = val_loss_reg + val_loss_om + val_loss_ml + val_loss_vp
                 # TODO: Apply weighted sum 2
@@ -186,5 +188,6 @@ if __name__ == "__main__":
                 step=epoch,
             )
 
+        # reduce the learning rates...?
         for scheduler in schedulers:
             scheduler.step()
