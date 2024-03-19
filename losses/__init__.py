@@ -33,5 +33,5 @@ class FourTaskLoss(nn.Module):
         # for weight, loss in zip(self.weights, [l_reg, l_om, l_ml, l_vp]):
         # total_loss += weight * loss
         # return total_loss
-        print(l_reg, l_om, l_ml, l_vp)
+        # print(l_reg, l_om, l_ml, l_vp)
         return l_reg, l_om, l_ml, l_vp
