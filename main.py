@@ -60,6 +60,7 @@ if __name__ == "__main__":
                 "BATCH_SIZE": BATCH_SIZE,
                 "N_CLASSES": N_CLASSES,
             },
+            notes="Training w/ Val set"
         )
 
     phase = 1
@@ -134,7 +135,7 @@ if __name__ == "__main__":
         )
         model.eval()
         with torch.no_grad():
-            for i, (rgb, seg, vpxy) in tqdm(enumerate(val_dl), total=len(val_dl)):
+            for i, (rgb, gridbox, seg, vpxy) in tqdm(enumerate(val_dl), total=len(val_dl)):
                 rgb = rgb.to(DEVICE)
                 out = model(rgb)
 
