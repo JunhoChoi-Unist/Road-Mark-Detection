@@ -37,15 +37,22 @@ if __name__ == "__main__":
 
     model = VPGNet(N_CLASSES).to(DEVICE)
     if PHASE==2:
-        model.load_state_dict('exps/0320-141111/06-0.4857.pt')
+        model.load_state_dict(torch.load('exps/0320-141111/06-0.4857.pt'))
     criterion = FourTaskLoss(weights=[1/0.5, 1/0.2, 1/0.4, 1/0.4])
     # TODO: temporary fix
-    optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
-    optimizer_1 = torch.optim.Adam(model.gridBox.parameters(), lr=0)
-    optimizer_2 = torch.optim.Adam(model.objectMask.parameters(), lr=0)
-    optimizer_3 = torch.optim.Adam(model.multiLabel.parameters(), lr=0)
-    optimizer_4 = torch.optim.Adam(model.vpp.parameters(), lr=LEARNING_RATE)
-
+    if PHASE==1:
+        optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
+        optimizer_1 = torch.optim.Adam(model.gridBox.parameters(), lr=0)
+        optimizer_2 = torch.optim.Adam(model.objectMask.parameters(), lr=0)
+        optimizer_3 = torch.optim.Adam(model.multiLabel.parameters(), lr=0)
+        optimizer_4 = torch.optim.Adam(model.vpp.parameters(), lr=LEARNING_RATE)
+    elif PHASE==2:
+        optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
+        optimizer_1 = torch.optim.Adam(model.gridBox.parameters(), lr=LEARNING_RATE)
+        optimizer_2 = torch.optim.Adam(model.objectMask.parameters(), lr=LEARNING_RATE)
+        optimizer_3 = torch.optim.Adam(model.multiLabel.parameters(), lr=LEARNING_RATE)
+        optimizer_4 = torch.optim.Adam(model.vpp.parameters(), lr=LEARNING_RATE)
+    
     optimizers = [optimizer_0, optimizer_1, optimizer_2, optimizer_3, optimizer_4]
     schedulers = [
         torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=0.7)
