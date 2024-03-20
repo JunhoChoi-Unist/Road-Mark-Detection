@@ -32,6 +32,7 @@ if __name__ == "__main__":
     SAVE_PATH = f'exps/{datetime.now().strftime("%m%d-%H%M%S")}'
     WANDB = True
     N_CLASSES = 17
+    PHASE = 2
 
     model = VPGNet(N_CLASSES).to(DEVICE)
     criterion = FourTaskLoss(weights=[1/0.49, 1/0.69, 1/2.89, 1/0.35])
