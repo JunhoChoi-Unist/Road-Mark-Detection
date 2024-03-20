@@ -26,6 +26,7 @@ if __name__ == "__main__":
     from tqdm import tqdm
     import torch
 
+    NOTES = "phase 2 training"
     DEVICE = "cuda"
     EPOCHS = 50
     LEARNING_RATE = 5e-4
@@ -35,7 +36,9 @@ if __name__ == "__main__":
     PHASE = 2
 
     model = VPGNet(N_CLASSES).to(DEVICE)
-    criterion = FourTaskLoss(weights=[1/0.49, 1/0.69, 1/2.89, 1/0.35])
+    if PHASE==2:
+        model.load_state_dict('exps/0320-141111/06-0.4857.pt')
+    criterion = FourTaskLoss(weights=[1/0.5, 1/0.2, 1/0.4, 1/0.4])
     # TODO: temporary fix
     optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
     optimizer_1 = torch.optim.Adam(model.gridBox.parameters(), lr=0)
@@ -61,7 +64,7 @@ if __name__ == "__main__":
                 "BATCH_SIZE": BATCH_SIZE,
                 "N_CLASSES": N_CLASSES,
             },
-            notes="Training on cuda"
+            notes=NOTES
         )
 
     phase = 1
