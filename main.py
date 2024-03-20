@@ -60,7 +60,7 @@ if __name__ == "__main__":
                 "BATCH_SIZE": BATCH_SIZE,
                 "N_CLASSES": N_CLASSES,
             },
-            notes="Training w/ Val set"
+            notes="Training on cuda"
         )
 
     phase = 1
@@ -203,9 +203,9 @@ if __name__ == "__main__":
                     patience = 0
                     # TODO: Test if fixed or not
                     current_lr = optimizer_0.param_groups[0]["lr"]
+                    optimizer_1.param_groups[0]["lr"] = current_lr
                     optimizer_2.param_groups[0]["lr"] = current_lr
                     optimizer_3.param_groups[0]["lr"] = current_lr
-                    optimizer_4.param_groups[0]["lr"] = current_lr
 
             elif phase == 2:
                 if patience > 5:    
