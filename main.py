@@ -191,6 +191,7 @@ if __name__ == "__main__":
                     # TODO: Log weights of the Losses
                 },
                 step=epoch,
+                commit=True
             )
 
         if best_loss > val_loss_epoch:
