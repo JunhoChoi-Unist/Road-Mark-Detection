@@ -110,6 +110,9 @@ if __name__ == "__main__":
             train_loss_ml_epoch += train_loss_ml.item() * rgb.shape[0]
             train_loss_vp_epoch += train_loss_vp.item() * rgb.shape[0]
 
+            if i%100==0:
+                print(f"@iter {i:<4}: l_reg={train_loss_reg_epoch:.4f} l_om={train_loss_om_epoch:.4f} l_ml={train_loss_ml_epoch:.4f} l_vp={train_loss_vp_epoch:.4f}")
+
         train_loss_epoch /= len(train_dl.dataset)
         train_loss_reg_epoch /= len(train_dl.dataset)
         train_loss_om_epoch /= len(train_dl.dataset)
