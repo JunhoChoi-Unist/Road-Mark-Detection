@@ -26,7 +26,7 @@ if __name__ == "__main__":
     from tqdm import tqdm
     import torch
 
-    NOTES = "phase 2 training"
+    NOTES = "phase 2 training with dynamic weight"
     DEVICE = "cuda"
     EPOCHS = 50
     LEARNING_RATE = 5e-4
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     model = VPGNet(N_CLASSES).to(DEVICE)
     if PHASE==2:
         model.load_state_dict(torch.load('exps/0320-141111/06-0.4857.pt'))
-    criterion = FourTaskLoss(weights=[1/0.5, 1/0.2, 1/0.4, 1/0.4])
+    criterion = FourTaskLoss()
     # TODO: temporary fix
     if PHASE==1:
         optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
@@ -102,6 +102,16 @@ if __name__ == "__main__":
             train_loss_reg, train_loss_om, train_loss_ml, train_loss_vp = criterion(
                 out, gridbox, seg, vpxy
             )
+            if max(train_loss_reg, train_loss_om, train_loss_ml, train_loss_vp) / min(train_loss_reg, train_loss_om, train_loss_ml, train_loss_vp) > 5.0:
+                w1, w2, w3, w4 = criterion.weights
+                w1_new, w2_new, w3_new, w4_new = torch.tensor([1.0/train_loss_reg, 1.0/train_loss_om, 1.0/train_loss_ml, 1.0/train_loss_vp])
+                criterion.weights = [w1_new, w2_new, w3_new, w4_new]
+                train_loss_reg *= w1_new / w1
+                train_loss_om *= w2_new / w2
+                train_loss_ml *= w3_new / w3
+                train_loss_vp *= w4_new / w4
+
+
             train_loss = train_loss_reg + train_loss_om + train_loss_ml + train_loss_vp
             # TODO: Apply weighted sum 1
 
@@ -118,7 +128,7 @@ if __name__ == "__main__":
             train_loss_vp_epoch += train_loss_vp.item() * rgb.shape[0]
 
             if i%100==0:
-                print(f"@iter {i:<4}: l_reg={train_loss_reg_epoch:.4f} l_om={train_loss_om_epoch:.4f} l_ml={train_loss_ml_epoch:.4f} l_vp={train_loss_vp_epoch:.4f}")
+                print(f"\t @iter {i:<4}: l_reg={train_loss_reg.item():>02.4f} l_om={train_loss_om.item():>02.4f} l_ml={train_loss_ml.item():>02.4f} l_vp={train_loss_vp.item():>02.4f}")
 
         train_loss_epoch /= len(train_dl.dataset)
         train_loss_reg_epoch /= len(train_dl.dataset)
@@ -201,7 +211,10 @@ if __name__ == "__main__":
                     "objectMask_lr": optimizer_2.param_groups[0]["lr"],
                     "multiLabel_lr": optimizer_3.param_groups[0]["lr"],
                     "vpp_lr": optimizer_4.param_groups[0]["lr"],
-                    # TODO: Log weights of the Losses
+                    "w1": criterion.weights[0].item(),
+                    "w2": criterion.weights[1].item(),
+                    "w3": criterion.weights[2].item(),
+                    "w4": criterion.weights[3].item(),
                 },
                 step=epoch,
                 commit=True
