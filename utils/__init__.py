@@ -64,6 +64,16 @@ def draw_segs(model, dataset, num=10):
         axs[n, 1].axis("off")
     plt.show()
 
+import matplotlib.pyplot as plt
+from matplotlib.colors import BoundaryNorm, LinearSegmentedColormap
+import numpy as np
+cmap = plt.cm.gist_rainbow
+seventeen_cat = cmap(np.linspace(0, 1, 18))
+seventeen_cat[0, -1] = 0 # transparent background
+seventeen_cat = LinearSegmentedColormap.from_list('seventeen_cat', seventeen_cat, 18)
+bounds = np.linspace(0, 17, 18)
+norm = BoundaryNorm(bounds, seventeen_cat.N)
+
 
 if __name__ == "__main__":
     import torch
