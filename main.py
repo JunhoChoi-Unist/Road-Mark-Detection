@@ -203,10 +203,6 @@ if __name__ == "__main__":
                     "objectMask_lr": optimizer_2.param_groups[0]["lr"],
                     "multiLabel_lr": optimizer_3.param_groups[0]["lr"],
                     "vpp_lr": optimizer_4.param_groups[0]["lr"],
-                    "w1": criterion.weights[0].item(),
-                    "w2": criterion.weights[1].item(),
-                    "w3": criterion.weights[2].item(),
-                    "w4": criterion.weights[3].item(),
                 },
                 step=epoch,
                 commit=True
