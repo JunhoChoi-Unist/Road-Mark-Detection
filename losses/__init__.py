@@ -4,12 +4,8 @@ import torch.nn.functional as F
 
 
 class FourTaskLoss(nn.Module):
-    def __init__(self, weights=None):
+    def __init__(self):
         super(FourTaskLoss, self).__init__()
-        if weights is None:
-            self.weights = torch.tensor([1.0, 1.0, 1.0, 1.0])  # Default weights
-        else:
-            self.weights = torch.tensor(weights)
 
     def forward(self, out, gridbox, seg, vpxy):
         l_reg = F.l1_loss(out[0], gridbox.to('cuda'))
@@ -25,9 +21,5 @@ class FourTaskLoss(nn.Module):
                 vp[i][vp_y // 4 :, : vp_x // 4] = 3
                 vp[i][vp_y // 4 :, vp_x // 4 :] = 4
         l_vp = F.cross_entropy(out[3], vp.to('cuda'))
-        # total_loss = torch.zeros(1, requires_grad=True, device='cuda')
-        # for weight, loss in zip(self.weights, [l_reg, l_om, l_ml, l_vp]):
-        # total_loss += weight * loss
-        # return total_loss
-        # print(l_reg, l_om, l_ml, l_vp)
+        
         return l_reg, l_om, l_ml, l_vp
