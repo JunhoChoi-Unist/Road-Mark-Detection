@@ -1,8 +1,126 @@
-from utils import train_test_split
+def trainLoop(model, dataloader, criterion, optimizers, weights, epoch, wandb=None):
+    losses = {"l_reg": 0, "l_om": 0, "l_ml": 0, "l_vp": 0, "loss": 0}
+    w1, w2, w3, w4 = weights
 
-train, val, test = train_test_split(root_dir="D:/VPGNet-DB-5ch/", val_size=0.15)
+    for i, (rgb, gridbox, seg, vpxy) in tqdm(
+        enumerate(dataloader), total=len(dataloader)
+    ):
+        rgb = rgb.to(DEVICE)
+        out = model(rgb)
+        l_reg, l_om, l_ml, l_vp = criterion(out, gridbox, seg, vpxy)
+        losses["l_reg"] += l_reg.item() * rgb.shape[0]
+        losses["l_om"] += l_om.item() * rgb.shape[0]
+        losses["l_ml"] += l_ml.item() * rgb.shape[0]
+        losses["l_vp"] += l_vp.item() * rgb.shape[0]
+
+        # update loss weights every batch when > 5.0
+        if (
+            max(w1 * l_reg, w2 * l_om, w3 * l_ml, w4 * l_vp)
+            / min(w1 * l_reg, w2 * l_om, w3 * l_ml, w4 * l_vp)
+            > 5.0
+        ):
+            l_sum = (
+                1 / l_reg.item() + 1 / l_om.item() + 1 / l_ml.item() + 1 / l_vp.item()
+            )
+            w1 = (1 / l_reg.item()) / l_sum
+            w2 = (1 / l_om.item()) / l_sum
+            w3 = (1 / l_ml.item()) / l_sum
+            w4 = (1 / l_vp.item()) / l_sum
+        if wandb:
+            wandb.log(
+                {
+                    "w1": w1,
+                    "w2": w2,
+                    "w3": w3,
+                    "w4": w4,
+                    "iter_step": (epoch - 1) * len(dataloader) + i,
+                }
+            )
+
+        # weighted loss sum
+        loss = w1 * l_reg + w2 * l_om + w3 * l_ml + w4 * l_vp
+        losses["loss"] += loss.item() * rgb.shape[0]
+
+        # update parameters
+        for optimizer in optimizers:
+            optimizer.zero_grad()
+        loss.backward()
+        for optimizer in optimizers:
+            optimizer.step()
+
+        if i % 100 == 0:
+            print(
+                f"\t @iter {i:<4}: l_reg={l_reg.item():>02.4f} l_om={l_om.item():>02.4f} l_ml={l_ml.item():>02.4f} l_vp={l_vp.item():>02.4f}"
+            )
+
+    losses["l_reg"] /= len(dataloader.dataset)
+    losses["l_om"] /= len(dataloader.dataset)
+    losses["l_ml"] /= len(dataloader.dataset)
+    losses["l_vp"] /= len(dataloader.dataset)
+    losses["loss"] /= len(dataloader.dataset)
+
+    if wandb:
+        wandb.log(
+            {
+                "train/loss": losses["loss"],
+                "train/l_reg": losses["l_reg"],
+                "train/l_om": losses["l_om"],
+                "train/l_ml": losses["l_ml"],
+                "train/l_vp": losses["l_vp"],
+                "epoch": epoch,
+            },
+        )
+    print(
+        f"\t train loss: {losses['loss']:.4f} l_reg:{losses['l_reg']:.4f} l_om:{losses['l_om']:.4f} l_ml:{losses['l_ml']:.4f} l_vp:{losses['l_vp']:.4f}"
+    )
+    return (w1, w2, w3, w4)
+
+
+def evalLoop(model, dataloader, criterion, weights, epoch, wandb=None):
+    losses = {"l_reg": 0, "l_om": 0, "l_ml": 0, "l_vp": 0, "loss": 0}
+    w1, w2, w3, w4 = weights
+
+    for rgb, gridbox, seg, vpxy in dataloader:
+        rgb = rgb.to(DEVICE)
+        out = model(rgb)
+        l_reg, l_om, l_ml, l_vp = criterion(out, gridbox, seg, vpxy)
+        losses["l_reg"] += l_reg.item() * rgb.shape[0]
+        losses["l_om"] += l_om.item() * rgb.shape[0]
+        losses["l_ml"] += l_ml.item() * rgb.shape[0]
+        losses["l_vp"] += l_vp.item() * rgb.shape[0]
+
+        # weighted loss sum
+        loss = w1 * l_reg + w2 * l_om + w3 * l_ml + w4 * l_vp
+        losses["loss"] += loss.item() * rgb.shape[0]
+
+    losses["l_reg"] /= len(dataloader.dataset)
+    losses["l_om"] /= len(dataloader.dataset)
+    losses["l_ml"] /= len(dataloader.dataset)
+    losses["l_vp"] /= len(dataloader.dataset)
+    losses["loss"] /= len(dataloader.dataset)
+
+    if wandb:
+        wandb.log(
+            {
+                "val/loss": losses["loss"],
+                "val/l_reg": losses["l_reg"],
+                "val/l_om": losses["l_om"],
+                "val/l_ml": losses["l_ml"],
+                "val/l_vp": losses["l_vp"],
+                "epoch": epoch,
+            },
+        )
+    print(
+        f"\t   val loss: {losses['loss']:.4f} l_reg:{losses['l_reg']:.4f} l_om:{losses['l_om']:.4f} l_ml:{losses['l_ml']:.4f} l_vp:{losses['l_vp']:.4f}"
+    )
+    return losses["l_reg"], losses["l_om"], losses["l_ml"], losses["l_vp"]
+
 
 if __name__ == "__main__":
+    from utils import train_test_split
+
+    train, val, test = train_test_split(root_dir="D:/VPGNet-DB-5ch/", val_size=0.15)
+
     from RoadDataset import RoadDataset
     from models import VPGNet
     from losses import FourTaskLoss
@@ -17,7 +135,7 @@ if __name__ == "__main__":
     val_ds = RoadDataset(val, transform=T.Compose([T.ToTensor()]))
     # test_ds = RoadDataset(test, transform=T.Compose([T.ToTensor()]))
 
-    BATCH_SIZE = 14
+    BATCH_SIZE = 10
     # train_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
     train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
     val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
@@ -26,39 +144,43 @@ if __name__ == "__main__":
     from tqdm import tqdm
     import torch
 
-    NOTES = "phase 2 training with dynamic weight"
+    NOTES = "training phase1+2 / 1+63 classes"
     DEVICE = "cuda"
     EPOCHS = 50
-    LEARNING_RATE = 5e-4
+    LEARNING_RATE = 1e-4
     SAVE_PATH = f'exps/{datetime.now().strftime("%m%d-%H%M%S")}'
     WANDB = True
-    N_CLASSES = 17
-    PHASE = 2
+    # N_CLASSES = 17
+    N_CLASSES = 63
+    PHASE = 1
 
     model = VPGNet(N_CLASSES).to(DEVICE)
-    if PHASE==2:
-        model.load_state_dict(torch.load('exps/0320-141111/06-0.4857.pt'))
+    if PHASE == 2:
+        model.load_state_dict(torch.load("exps/0324-012417/07-6.9561.pt"))
     criterion = FourTaskLoss()
     # TODO: temporary fix
-    if PHASE==1:
+    if PHASE == 1:
         optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
         optimizer_1 = torch.optim.Adam(model.gridBox.parameters(), lr=0)
         optimizer_2 = torch.optim.Adam(model.objectMask.parameters(), lr=0)
         optimizer_3 = torch.optim.Adam(model.multiLabel.parameters(), lr=0)
         optimizer_4 = torch.optim.Adam(model.vpp.parameters(), lr=LEARNING_RATE)
-    elif PHASE==2:
+        w1, w2, w3, w4 = 1.0, 0, 0, 0
+    elif PHASE == 2:
         optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
         optimizer_1 = torch.optim.Adam(model.gridBox.parameters(), lr=LEARNING_RATE)
         optimizer_2 = torch.optim.Adam(model.objectMask.parameters(), lr=LEARNING_RATE)
         optimizer_3 = torch.optim.Adam(model.multiLabel.parameters(), lr=LEARNING_RATE)
         optimizer_4 = torch.optim.Adam(model.vpp.parameters(), lr=LEARNING_RATE)
-    
+        w1, w2, w3, w4 = 0.25, 0.25, 0.25, 0.25
+
     optimizers = [optimizer_0, optimizer_1, optimizer_2, optimizer_3, optimizer_4]
     schedulers = [
         torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=0.7)
         for optimizer in optimizers
     ]
 
+    run = None
     if WANDB:
         import wandb
 
@@ -71,176 +193,88 @@ if __name__ == "__main__":
                 "BATCH_SIZE": BATCH_SIZE,
                 "N_CLASSES": N_CLASSES,
             },
-            notes=NOTES
+            notes=NOTES,
         )
+        wandb.define_metric("iter_step")
+        wandb.define_metric("w[0-9]", step_metric="iter_step")
+        wandb.define_metric("epoch")
+        wandb.define_metric("train/*", step_metric="epoch")
+        wandb.define_metric("val/*", step_metric="epoch")
+        wandb.define_metric("lr/*", step_metric="epoch")
 
-    phase = 1
-    best_loss = np.inf
-    patience = 0
-
+    best_l_vp = np.inf
+    # Start fitting
+    print(f"PHASE #{PHASE}")
     for epoch in range(1, 1 + EPOCHS):
-        # Start of the Train Loop
-        train_loss_epoch = 0.0
-        (
-            train_loss_reg_epoch,
-            train_loss_om_epoch,
-            train_loss_ml_epoch,
-            train_loss_vp_epoch,
-        ) = (0.0, 0.0, 0.0, 0.0)
+        print(f"\nEpoch:{epoch:>3}/{EPOCHS}")
+
+        # Start of the Training Loop
         model.train()
-        for i, (rgb, gridbox, seg, vpxy) in tqdm(
-            enumerate(train_dl), total=len(train_dl)
-        ):
-            rgb = rgb.to(DEVICE)
-            out = model(rgb)
-
-            # print(f"out[0]: {out[0].shape} {out[0].dtype} {out[0].device}")
-            # print(f"out[1]: {out[1].shape} {out[1].dtype} {out[1].device}")
-            # print(f"out[2]: {out[2].shape} {out[2].dtype} {out[2].device}")
-            # print(f"out[3]: {out[3].shape} {out[3].dtype} {out[3].device}")
-
-            train_loss_reg, train_loss_om, train_loss_ml, train_loss_vp = criterion(
-                out, gridbox, seg, vpxy
-            )
-            if max(train_loss_reg, train_loss_om, train_loss_ml, train_loss_vp) / min(train_loss_reg, train_loss_om, train_loss_ml, train_loss_vp) > 5.0:
-                w1, w2, w3, w4 = criterion.weights
-                w1_new, w2_new, w3_new, w4_new = torch.tensor([1.0/train_loss_reg, 1.0/train_loss_om, 1.0/train_loss_ml, 1.0/train_loss_vp])
-                criterion.weights = [w1_new, w2_new, w3_new, w4_new]
-                train_loss_reg *= w1_new / w1
-                train_loss_om *= w2_new / w2
-                train_loss_ml *= w3_new / w3
-                train_loss_vp *= w4_new / w4
-
-
-            train_loss = train_loss_reg + train_loss_om + train_loss_ml + train_loss_vp
-            # TODO: Apply weighted sum 1
-
-            for optimizer in optimizers:
-                optimizer.zero_grad()
-            train_loss.backward()
-            for optimizer in optimizers:
-                optimizer.step()
-
-            train_loss_epoch += train_loss.item() * rgb.shape[0]
-            train_loss_reg_epoch += train_loss_reg.item() * rgb.shape[0]
-            train_loss_om_epoch += train_loss_om.item() * rgb.shape[0]
-            train_loss_ml_epoch += train_loss_ml.item() * rgb.shape[0]
-            train_loss_vp_epoch += train_loss_vp.item() * rgb.shape[0]
-
-            if i%100==0:
-                print(f"\t @iter {i:<4}: l_reg={train_loss_reg.item():>02.4f} l_om={train_loss_om.item():>02.4f} l_ml={train_loss_ml.item():>02.4f} l_vp={train_loss_vp.item():>02.4f}")
-
-        train_loss_epoch /= len(train_dl.dataset)
-        train_loss_reg_epoch /= len(train_dl.dataset)
-        train_loss_om_epoch /= len(train_dl.dataset)
-        train_loss_ml_epoch /= len(train_dl.dataset)
-        train_loss_vp_epoch /= len(train_dl.dataset)
-
-        if WANDB:
-            run.log(
-                {
-                    "train loss": train_loss_epoch,
-                    "train l_reg": train_loss_reg_epoch,
-                    "train l_om": train_loss_om_epoch,
-                    "train l_ml": train_loss_ml_epoch,
-                    "train l_vp": train_loss_vp_epoch,
-                },
-                step=epoch,
-            )
-        # End of the Training Loop
+        w1, w2, w3, w4 = trainLoop(
+            model,
+            train_dl,
+            criterion,
+            optimizers,
+            weights=(w1, w2, w3, w4),
+            epoch=epoch,
+            wandb=run,
+        )
 
         # Start of the Validation Loop
-        val_loss_epoch = 0.0
-        val_loss_reg_epoch, val_loss_om_epoch, val_loss_ml_epoch, val_loss_vp_epoch = (
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-        )
         model.eval()
         with torch.no_grad():
-            for i, (rgb, gridbox, seg, vpxy) in tqdm(enumerate(val_dl), total=len(val_dl)):
-                rgb = rgb.to(DEVICE)
-                out = model(rgb)
+            l_reg, l_om, l_ml, l_vp = evalLoop(
+                model,
+                val_dl,
+                criterion,
+                weights=(w1, w2, w3, w4),
+                epoch=epoch,
+                wandb=run,
+            )
 
-                val_loss_reg, val_loss_om, val_loss_ml, val_loss_vp = criterion(
-                    out, gridbox, seg, vpxy
-                )
-                val_loss = val_loss_reg + val_loss_om + val_loss_ml + val_loss_vp
-                # TODO: Apply weighted sum 2
-
-                val_loss_epoch += val_loss.item() * rgb.shape[0]
-                val_loss_reg_epoch += val_loss_reg.item() * rgb.shape[0]
-                val_loss_om_epoch += val_loss_om.item() * rgb.shape[0]
-                val_loss_ml_epoch += val_loss_ml.item() * rgb.shape[0]
-                val_loss_vp_epoch += val_loss_vp.item() * rgb.shape[0]
-
-            val_loss_epoch /= len(val_dl.dataset)
-            val_loss_reg_epoch /= len(val_dl.dataset)
-            val_loss_om_epoch /= len(val_dl.dataset)
-            val_loss_ml_epoch /= len(val_dl.dataset)
-            val_loss_vp_epoch /= len(val_dl.dataset)
-
-            if WANDB:
-                run.log(
-                    {
-                        "val loss": val_loss_epoch,
-                        "val l_reg": val_loss_reg_epoch,
-                        "val l_om": val_loss_om_epoch,
-                        "val l_ml": val_loss_ml_epoch,
-                        "val l_vp": val_loss_vp_epoch,
-                    },
-                    step=epoch,
-                )
-        # End of the Validation Loop
-
-        print(
-            f"Epoch: {epoch:02}/{EPOCHS}\n\t train_loss: {train_loss_epoch:.4f}\n\t val_loss: {val_loss_epoch:.4f}"
-        )
         os.makedirs(SAVE_PATH, exist_ok=True)
         torch.save(
-            model.state_dict(), f"{SAVE_PATH}/{epoch:02}-{val_loss_epoch:.4f}.pt"
+            model.state_dict(),
+            f"{SAVE_PATH}/{epoch:02}-{(l_reg+l_om+l_ml+l_vp):02.4f}.pt",
         )
-        print(f"\t model saved as {SAVE_PATH}/{epoch:02}-{val_loss_epoch:.4f}.pt")
+        print(
+            f"\t model saved as {SAVE_PATH}/{epoch:02}-{(l_reg+l_om+l_ml+l_vp):02.4f}.pt"
+        )
 
         if WANDB:
             run.log(
                 {
-                    "shared_lr": optimizer_0.param_groups[0]["lr"],
-                    "gridBox_lr": optimizer_1.param_groups[0]["lr"],
-                    "objectMask_lr": optimizer_2.param_groups[0]["lr"],
-                    "multiLabel_lr": optimizer_3.param_groups[0]["lr"],
-                    "vpp_lr": optimizer_4.param_groups[0]["lr"],
-                    "w1": criterion.weights[0].item(),
-                    "w2": criterion.weights[1].item(),
-                    "w3": criterion.weights[2].item(),
-                    "w4": criterion.weights[3].item(),
+                    "lr/shared": optimizer_0.param_groups[0]["lr"],
+                    "lr/gridBox": optimizer_1.param_groups[0]["lr"],
+                    "lr/objectMask": optimizer_2.param_groups[0]["lr"],
+                    "lr/multiLabel": optimizer_3.param_groups[0]["lr"],
+                    "lr/vpp": optimizer_4.param_groups[0]["lr"],
+                    "epoch": epoch,
                 },
-                step=epoch,
-                commit=True
+                commit=True,
             )
-
-        if best_loss > val_loss_epoch:
-            best_loss = val_loss_epoch
-            patience = 0
-        else:
-            patience += 1
-            if phase == 1:
-                if patience > 3:
-                    phase = 2
-                    patience = 0
-                    # TODO: Test if fixed or not
-                    current_lr = optimizer_0.param_groups[0]["lr"]
-                    optimizer_1.param_groups[0]["lr"] = current_lr
-                    optimizer_2.param_groups[0]["lr"] = current_lr
-                    optimizer_3.param_groups[0]["lr"] = current_lr
-
-            elif phase == 2:
-                if patience > 5:    
-                    print(f"Early stopping!\n\t @ Epoch: {epoch:2}\n\t Best Loss record: {best_loss:.4f}")
-                    break # EARLY-STOPPING
-                
 
         # reduce the learning rates...?
         for scheduler in schedulers:
             scheduler.step()
+
+        if PHASE == 1:
+            if best_l_vp > l_vp:
+                best_l_vp = l_vp
+                patience = 0
+            else:
+                patience += 1
+                if patience > 2:
+                    patience = 0
+                    PHASE = 2
+                    print("\nPHASE 2 ENTERED!")
+                    optimizers = [
+                        torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+                    ]
+                    schedulers = [
+                        torch.optim.lr_scheduler.StepLR(
+                            optimizer=optimizers[0], step_size=5, gamma=0.7
+                        )
+                    ]
+                    criterion = FourTaskLoss()
+                    w1, w2, w3, w4 = 0.25, 0.25, 0.25, 0.25
