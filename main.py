@@ -2,10 +2,9 @@ def trainLoop(model, dataloader, criterion, optimizers, weights, epoch, wandb=No
     losses = {"l_reg": 0, "l_om": 0, "l_ml": 0, "l_vp": 0, "loss": 0}
     w1, w2, w3, w4 = weights
 
-    # for i, (rgb, gridbox, seg, vpxy) in tqdm(
-    # enumerate(dataloader), total=len(dataloader)
-    # ):
-    for i, (rgb, gridbox, seg, vpxy) in enumerate(dataloader):
+    for i, (rgb, gridbox, seg, vpxy) in tqdm(
+        enumerate(dataloader), total=len(dataloader)
+    ):
         rgb = rgb.to(DEVICE)
         out = model(rgb)
         l_reg, l_om, l_ml, l_vp = criterion(out, gridbox, seg, vpxy)
