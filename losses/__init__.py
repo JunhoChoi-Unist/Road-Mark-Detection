@@ -23,3 +23,19 @@ class FourTaskLoss(nn.Module):
         l_vp = F.cross_entropy(out[3], vp.to('cuda'))
         
         return l_reg, l_om, l_ml, l_vp
+
+class VppTaskLoss(nn.Module):
+    def __init__(self):
+        super(VppTaskLoss, self).__init__()
+
+    def forward(self, out, vpxy):
+        vp = torch.zeros((out[3].shape[0], 120, 160)).long()
+        for i, (vp_x, vp_y) in enumerate(vpxy):
+            if vp_x != 0 or vp_y != 0:
+                vp[i][: vp_y // 4, vp_x // 4 :] = 1
+                vp[i][: vp_y // 4, : vp_x // 4] = 2
+                vp[i][vp_y // 4 :, : vp_x // 4] = 3
+                vp[i][vp_y // 4 :, vp_x // 4 :] = 4
+        l_vp = F.cross_entropy(out[3], vp.to('cuda'))
+        
+        return l_vp

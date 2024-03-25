@@ -1,4 +1,4 @@
-exps/**
+exps/
 wandb/
 .vscode/
 **/__pycache__/
