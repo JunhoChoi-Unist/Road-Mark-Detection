@@ -19,11 +19,13 @@ def trainLoop(model, dataloader, criterion, optimizers, weights, epoch, wandb=No
             / min(w1 * l_reg, w2 * l_om, w3 * l_ml, w4 * l_vp)
             > 5.0
         ):
-            l_sum = torch.sum(1 / l_reg, 1 / l_om, 1 / l_ml, 1 / l_vp)
-            w1 = (1 / l_reg) / l_sum
-            w2 = (1 / l_om) / l_sum
-            w3 = (1 / l_ml) / l_sum
-            w4 = (1 / l_vp) / l_sum
+            l_sum = (
+                1 / l_reg.item() + 1 / l_om.item() + 1 / l_ml.item() + 1 / l_vp.item()
+            )
+            w1 = (1 / l_reg.item()) / l_sum
+            w2 = (1 / l_om.item()) / l_sum
+            w3 = (1 / l_ml.item()) / l_sum
+            w4 = (1 / l_vp.item()) / l_sum
         if wandb:
             wandb.log(
                 {
@@ -198,7 +200,7 @@ if __name__ == "__main__":
         wandb.define_metric("epoch")
         wandb.define_metric("train/*", step_metric="epoch")
         wandb.define_metric("val/*", step_metric="epoch")
-        wandb.define_metric("*_lr", step_metric="epoch")
+        wandb.define_metric("lr/*", step_metric="epoch")
 
     best_l_vp = np.inf
     # Start fitting
@@ -242,11 +244,11 @@ if __name__ == "__main__":
         if WANDB:
             run.log(
                 {
-                    "shared_lr": optimizer_0.param_groups[0]["lr"],
-                    "gridBox_lr": optimizer_1.param_groups[0]["lr"],
-                    "objectMask_lr": optimizer_2.param_groups[0]["lr"],
-                    "multiLabel_lr": optimizer_3.param_groups[0]["lr"],
-                    "vpp_lr": optimizer_4.param_groups[0]["lr"],
+                    "lr/shared": optimizer_0.param_groups[0]["lr"],
+                    "lr/gridBox": optimizer_1.param_groups[0]["lr"],
+                    "lr/objectMask": optimizer_2.param_groups[0]["lr"],
+                    "lr/multiLabel": optimizer_3.param_groups[0]["lr"],
+                    "lr/vpp": optimizer_4.param_groups[0]["lr"],
                     "epoch": epoch,
                 },
                 commit=True,
