@@ -120,7 +120,7 @@ def evalLoop(model, dataloader, criterion, weights, epoch, wandb=None):
 if __name__ == "__main__":
     from utils import train_test_split
 
-    train, val = train_test_split(root_dir="D:/VPGNet-DB-5ch/", test_size=0.1)
+    train, val = train_test_split(root_dir="data/VPGNet-DB-5ch/", test_size=0.1)
 
     from RoadDataset import RoadDataset
     from models import VPGNet
