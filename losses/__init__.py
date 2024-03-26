@@ -36,6 +36,6 @@ class VppTaskLoss(nn.Module):
                 vp[i][: vp_y // 4, : vp_x // 4] = 2
                 vp[i][vp_y // 4 :, : vp_x // 4] = 3
                 vp[i][vp_y // 4 :, vp_x // 4 :] = 4
-        l_vp = F.cross_entropy(out[3], vp.to('cuda'))
+        l_vp = F.cross_entropy(out[3], vp)
         
         return l_vp
