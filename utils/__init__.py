@@ -1,4 +1,4 @@
-def train_test_split(root_dir="D:/VPGNet-DB-5ch/", val_size=0.15):
+def train_test_split(root_dir="D:/VPGNet-DB-5ch/", test_size=0.1):
     from pathlib import Path
     from glob import glob
 
@@ -9,14 +9,12 @@ def train_test_split(root_dir="D:/VPGNet-DB-5ch/", val_size=0.15):
     # random.shuffle(all_data)
 
     total_len = len(all_data)
-    val_len = int(val_size * total_len)
-    train_len = 5 * val_len
+    test_len = int(test_size*total_len)
 
-    train = all_data[:train_len]
-    val = all_data[train_len : train_len + val_len]
-    test = all_data[train_len + val_len :]
+    train = all_data[:-test_len]
+    test = all_data[-test_len:]
 
-    return train, val, test
+    return train, test
 
 
 def draw_vpp(model, dataset, num=10):

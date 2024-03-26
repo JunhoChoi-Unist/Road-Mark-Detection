@@ -53,23 +53,23 @@ def trainLoop(model, dataloader, criterion, optimizers, weights, epoch, wandb=No
                 f"\t @iter {i:<4}: l_reg={l_reg.item():>02.4f} l_om={l_om.item():>02.4f} l_ml={l_ml.item():>02.4f} l_vp={l_vp.item():>02.4f}"
             )
 
+        if wandb:
+            wandb.log(
+                {
+                    "train/loss": loss.item(),
+                    "train/l_reg": l_reg.item(),
+                    "train/l_om": l_om.item(),
+                    "train/l_ml": l_ml.item(),
+                    "train/l_vp": l_vp.item(),
+                    "iter_step": (epoch - 1) * len(dataloader) + i,
+                },
+            )
+
     losses["l_reg"] /= len(dataloader.dataset)
     losses["l_om"] /= len(dataloader.dataset)
     losses["l_ml"] /= len(dataloader.dataset)
     losses["l_vp"] /= len(dataloader.dataset)
     losses["loss"] /= len(dataloader.dataset)
-
-    if wandb:
-        wandb.log(
-            {
-                "train/loss": losses["loss"],
-                "train/l_reg": losses["l_reg"],
-                "train/l_om": losses["l_om"],
-                "train/l_ml": losses["l_ml"],
-                "train/l_vp": losses["l_vp"],
-                "epoch": epoch,
-            },
-        )
     print(
         f"\t train loss: {losses['loss']:.4f} l_reg:{losses['l_reg']:.4f} l_om:{losses['l_om']:.4f} l_ml:{losses['l_ml']:.4f} l_vp:{losses['l_vp']:.4f}"
     )
@@ -80,7 +80,7 @@ def evalLoop(model, dataloader, criterion, weights, epoch, wandb=None):
     losses = {"l_reg": 0, "l_om": 0, "l_ml": 0, "l_vp": 0, "loss": 0}
     w1, w2, w3, w4 = weights
 
-    for rgb, gridbox, seg, vpxy in dataloader:
+    for rgb, gridbox, seg, vpxy in tqdm(dataloader):
         rgb = rgb.to(DEVICE)
         out = model(rgb)
         l_reg, l_om, l_ml, l_vp = criterion(out, gridbox, seg, vpxy)
@@ -92,6 +92,7 @@ def evalLoop(model, dataloader, criterion, weights, epoch, wandb=None):
         # weighted loss sum
         loss = w1 * l_reg + w2 * l_om + w3 * l_ml + w4 * l_vp
         losses["loss"] += loss.item() * rgb.shape[0]
+
 
     losses["l_reg"] /= len(dataloader.dataset)
     losses["l_om"] /= len(dataloader.dataset)
@@ -107,7 +108,7 @@ def evalLoop(model, dataloader, criterion, weights, epoch, wandb=None):
                 "val/l_om": losses["l_om"],
                 "val/l_ml": losses["l_ml"],
                 "val/l_vp": losses["l_vp"],
-                "epoch": epoch,
+                "epoch": epoch
             },
         )
     print(
@@ -119,7 +120,7 @@ def evalLoop(model, dataloader, criterion, weights, epoch, wandb=None):
 if __name__ == "__main__":
     from utils import train_test_split
 
-    train, val, test = train_test_split(root_dir="D:/VPGNet-DB-5ch/", val_size=0.15)
+    train, val = train_test_split(root_dir="D:/VPGNet-DB-5ch/", test_size=0.1)
 
     from RoadDataset import RoadDataset
     from models import VPGNet
@@ -131,20 +132,18 @@ if __name__ == "__main__":
     import os
     from datetime import datetime
 
-    train_ds = RoadDataset(train, transform=T.Compose([T.ToTensor()]))
-    val_ds = RoadDataset(val, transform=T.Compose([T.ToTensor()]))
-    # test_ds = RoadDataset(test, transform=T.Compose([T.ToTensor()]))
+    train_ds = RoadDataset(train, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
+    val_ds = RoadDataset(val, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
 
     BATCH_SIZE = 10
-    # train_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
-    train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
-    val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+    train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+    val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
 
     import numpy as np
     from tqdm import tqdm
     import torch
 
-    NOTES = "training phase1+2 / 1+63 classes"
+    NOTES = "training phase1+2 / 1+63 classes /test_size=0.1"
     DEVICE = "cuda"
     EPOCHS = 50
     LEARNING_RATE = 1e-4
@@ -156,7 +155,7 @@ if __name__ == "__main__":
 
     model = VPGNet(N_CLASSES).to(DEVICE)
     if PHASE == 2:
-        model.load_state_dict(torch.load("exps/0324-012417/07-6.9561.pt"))
+        model.load_state_dict(torch.load("exps/0325-141920/05-5.8637.pt"))
     criterion = FourTaskLoss()
     # TODO: temporary fix
     if PHASE == 1:
@@ -165,7 +164,7 @@ if __name__ == "__main__":
         optimizer_2 = torch.optim.Adam(model.objectMask.parameters(), lr=0)
         optimizer_3 = torch.optim.Adam(model.multiLabel.parameters(), lr=0)
         optimizer_4 = torch.optim.Adam(model.vpp.parameters(), lr=LEARNING_RATE)
-        w1, w2, w3, w4 = 1.0, 0, 0, 0
+        w1, w2, w3, w4 = 0, 0, 0, 1.0
     elif PHASE == 2:
         optimizer_0 = torch.optim.Adam(model.shared.parameters(), lr=LEARNING_RATE)
         optimizer_1 = torch.optim.Adam(model.gridBox.parameters(), lr=LEARNING_RATE)
@@ -197,10 +196,9 @@ if __name__ == "__main__":
         )
         wandb.define_metric("iter_step")
         wandb.define_metric("w[0-9]", step_metric="iter_step")
+        wandb.define_metric("train/*", step_metric="iter_step")
         wandb.define_metric("epoch")
-        wandb.define_metric("train/*", step_metric="epoch")
         wandb.define_metric("val/*", step_metric="epoch")
-        wandb.define_metric("lr/*", step_metric="epoch")
 
     best_l_vp = np.inf
     # Start fitting
@@ -268,6 +266,9 @@ if __name__ == "__main__":
                     patience = 0
                     PHASE = 2
                     print("\nPHASE 2 ENTERED!")
+                    del optimizers
+                    del schedulers
+                    del criterion
                     optimizers = [
                         torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
                     ]
@@ -276,5 +277,3 @@ if __name__ == "__main__":
                             optimizer=optimizers[0], step_size=5, gamma=0.7
                         )
                     ]
-                    criterion = FourTaskLoss()
-                    w1, w2, w3, w4 = 0.25, 0.25, 0.25, 0.25
