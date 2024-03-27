@@ -179,7 +179,6 @@ if __name__ == "__main__":
         for optimizer in optimizers
     ]
 
-    model = torch.nn.DataParallel(model)
     run = None
     if WANDB:
         import wandb
@@ -263,7 +262,7 @@ if __name__ == "__main__":
                 patience = 0
             else:
                 patience += 1
-                if patience > 2:
+                if patience > 1:
                     patience = 0
                     PHASE = 2
                     print("\nPHASE 2 ENTERED!")
