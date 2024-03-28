@@ -122,16 +122,18 @@ class VPGNet(nn.Module):
             ),
             # (320 x 15 x 20)
         )
-    @staticmethod
-    def tiling(x, tile_size=8):
-        n_channels, w, h = x.shape() # 320, 15, 20
-        out_channels = n_channels / tile_size / tile_size # 320/8/8=5
-        x = x.view(out_channels, tile_size * tile_size, w, h) # 5, 64, 15, 20
-        out = torch.zeros(out_channels, w*tile_size, h*tile_size) # 5, 120, 160
+
+    def tiling(self, x, tile_size:int =8):
+        batch_size, n_channels, w, h = x.size() # -1, 320, 15, 20
+        out_channels = int(n_channels / tile_size / tile_size) # 320/8/8=5
+        x = x.view(batch_size, out_channels, tile_size * tile_size, w, h) # -1, 5, 64, 15, 20
+        out = torch.zeros(batch_size, out_channels, w*tile_size, h*tile_size) # -1, 5, 120, 160
         for i in range(tile_size):
             for j in range(tile_size):
-                out[:, i::tile_size, j::tile_size] = x[:, tile_size*i+j]
-        return out
+                out[:, :, i::tile_size, j::tile_size] = x[:, :, tile_size*i+j]
+        del x
+        device = next(self.parameters()).device
+        return out.to(device)
 
     def forward(self, x):
         shared = self.shared(x)

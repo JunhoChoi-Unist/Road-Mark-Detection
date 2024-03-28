@@ -132,8 +132,8 @@ if __name__ == "__main__":
     import os
     from datetime import datetime
 
-    # train_ds = RoadDataset(train, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
-    train_ds = RoadDataset(val, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
+    train_ds = RoadDataset(train, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
+    # train_ds = RoadDataset(val, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
     val_ds = RoadDataset(val, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
 
     BATCH_SIZE = 22
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     NOTES = "VP convergence testing...."
     DEVICE = "cuda:0"
     EPOCHS = 50
-    LEARNING_RATE = 5e-2
+    LEARNING_RATE = 1e-2
     SAVE_PATH = f'exps/{datetime.now().strftime("%m%d-%H%M%S")}'
     WANDB = True
     # N_CLASSES = 17
