@@ -132,10 +132,11 @@ if __name__ == "__main__":
     import os
     from datetime import datetime
 
-    train_ds = RoadDataset(train, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
+    # train_ds = RoadDataset(train, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
+    train_ds = RoadDataset(val, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
     val_ds = RoadDataset(val, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
 
-    BATCH_SIZE = 20
+    BATCH_SIZE = 22
     train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
     val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
 
@@ -143,10 +144,10 @@ if __name__ == "__main__":
     from tqdm import tqdm
     import torch
 
-    NOTES = "training phase1+2 / 1+63 classes /test_size=0.1"
-    DEVICE = "cuda"
+    NOTES = "VP convergence testing...."
+    DEVICE = "cuda:0"
     EPOCHS = 50
-    LEARNING_RATE = 1e-4
+    LEARNING_RATE = 5e-2
     SAVE_PATH = f'exps/{datetime.now().strftime("%m%d-%H%M%S")}'
     WANDB = True
     # N_CLASSES = 17
