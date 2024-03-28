@@ -156,7 +156,7 @@ if __name__ == "__main__":
 
     model = VPGNet(N_CLASSES).to(DEVICE)
     if PHASE == 2:
-        model.load_state_dict(torch.load("exps/0328-192942/03-5.8462", map_location=DEVICE))
+        model.load_state_dict(torch.load("exps/0328-192942/03-5.8462.pt", map_location=DEVICE))
     criterion = FourTaskLoss()
     # TODO: temporary fix
     if PHASE == 1:
