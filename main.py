@@ -156,7 +156,7 @@ if __name__ == "__main__":
 
     model = VPGNet(N_CLASSES).to(DEVICE)
     if PHASE == 2:
-        model.load_state_dict(torch.load("exps/0325-141920/05-5.8637.pt"))
+        model.load_state_dict(torch.load("exps/0328-192942/03-5.8462"))
     criterion = FourTaskLoss()
     # TODO: temporary fix
     if PHASE == 1:
@@ -172,7 +172,7 @@ if __name__ == "__main__":
         optimizer_2 = torch.optim.SGD(model.objectMask.parameters(), lr=LEARNING_RATE, momentum=0.9)
         optimizer_3 = torch.optim.SGD(model.multiLabel.parameters(), lr=LEARNING_RATE, momentum=0.9)
         optimizer_4 = torch.optim.SGD(model.vpp.parameters(), lr=LEARNING_RATE, momentum=0.9)
-        w1, w2, w3, w4 = 0.25, 0.25, 0.25, 0.25
+        w1, w2, w3, w4 = 0.4683, 0.3328, 0.05551, 0.1434
 
     optimizers = [optimizer_0, optimizer_1, optimizer_2, optimizer_3, optimizer_4]
     schedulers = [
