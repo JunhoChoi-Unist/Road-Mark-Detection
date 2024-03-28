@@ -152,11 +152,11 @@ if __name__ == "__main__":
     WANDB = True
     # N_CLASSES = 17
     N_CLASSES = 63
-    PHASE = 1
+    PHASE = 2
 
     model = VPGNet(N_CLASSES).to(DEVICE)
     if PHASE == 2:
-        model.load_state_dict(torch.load("exps/0328-192942/03-5.8462"))
+        model.load_state_dict(torch.load("exps/0328-192942/03-5.8462", map_location=DEVICE))
     criterion = FourTaskLoss()
     # TODO: temporary fix
     if PHASE == 1:
