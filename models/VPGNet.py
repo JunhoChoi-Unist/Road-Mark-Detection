@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 
@@ -121,18 +122,23 @@ class VPGNet(nn.Module):
             ),
             # (320 x 15 x 20)
         )
+    @staticmethod
+    def tiling(x, tile_size=8):
+        n_channels, w, h = x.shape() # 320, 15, 20
+        out_channels = n_channels / tile_size / tile_size # 320/8/8=5
+        x = x.view(out_channels, tile_size * tile_size, w, h) # 5, 64, 15, 20
+        out = torch.zeros(out_channels, w*tile_size, h*tile_size) # 5, 120, 160
+        for i in range(tile_size):
+            for j in range(tile_size):
+                out[:, i::tile_size, j::tile_size] = x[:, tile_size*i+j]
+        return out
 
     def forward(self, x):
         shared = self.shared(x)
-        gridBox = self.gridBox(shared).view(-1, 4, 8 * 15, 8 * 20)  # (4 x 120 x 160)
-        objectMask = self.objectMask(shared).view(
-            -1, 2, 8 * 15, 8 * 20
-        )  # (2 x 120 x 160)
+        gridBox = self.tiling(self.gridBox(shared)) # (4 x 120 x 160)
+        objectMask = self.tiling(self.objectMask(shared)) # (2 x 120 x 160)
 
-        multiLabel = self.multiLabel(shared).view(
-            -1, self.n_classes + 1, 4 * 15, 4 * 20
-        )  # (64 x 60 x 80) 1+17-classes
-        # multiLabel = self.multiLabel(shared).view(-1, 64, 4*15, 4*20)   # (64 x 60 x 80) 64-classes
+        multiLabel = self.tiling(self.multiLabel(shared), tile_size=4) # (64 x 60 x 80) 1+63-classes
 
-        vpp = self.vpp(shared).view(-1, 5, 8 * 15, 8 * 20)  # (5 x 120 x 160)
+        vpp = self.tiling(self.vpp(shared))  # (320 x 15 x 20)
         return gridBox, objectMask, multiLabel, vpp
