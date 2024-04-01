@@ -1,35 +1,32 @@
 def trainLoop(model, dataloader, criterion, optimizers, weights, epoch, wandb=None):
-    losses = {"l_reg": 0, "l_om": 0, "l_ml": 0, "l_vp": 0, "loss": 0}
-    w1, w2, w3, w4 = weights
+    losses = {"l_om": 0, "l_ml": 0, "l_vp": 0, "loss": 0}
+    w2, w3, w4 = weights
 
     for i, (rgb, gridbox, seg, vpxy) in tqdm(
         enumerate(dataloader), total=len(dataloader)
     ):
         rgb = rgb.to(DEVICE)
         out = model(rgb)
-        l_reg, l_om, l_ml, l_vp = criterion(out, gridbox, seg, vpxy)
-        losses["l_reg"] += l_reg.item() * rgb.shape[0]
+        l_om, l_ml, l_vp = criterion(out, gridbox, seg, vpxy)
         losses["l_om"] += l_om.item() * rgb.shape[0]
         losses["l_ml"] += l_ml.item() * rgb.shape[0]
         losses["l_vp"] += l_vp.item() * rgb.shape[0]
 
         # update loss weights every batch when > 5.0
         if (
-            max(w1 * l_reg, w2 * l_om, w3 * l_ml, w4 * l_vp)
-            / min(w1 * l_reg, w2 * l_om, w3 * l_ml, w4 * l_vp)
+            max(w2 * l_om, w3 * l_ml, w4 * l_vp)
+            / min(w2 * l_om, w3 * l_ml, w4 * l_vp)
             > 5.0
         ):
             l_sum = (
-                1 / l_reg.item() + 1 / l_om.item() + 1 / l_ml.item() + 1 / l_vp.item()
+                1 / l_om.item() + 1 / l_ml.item() + 1 / l_vp.item()
             )
-            w1 = (1 / l_reg.item()) / l_sum
             w2 = (1 / l_om.item()) / l_sum
             w3 = (1 / l_ml.item()) / l_sum
             w4 = (1 / l_vp.item()) / l_sum
         if wandb:
             wandb.log(
                 {
-                    "w1": w1,
                     "w2": w2,
                     "w3": w3,
                     "w4": w4,
@@ -38,7 +35,7 @@ def trainLoop(model, dataloader, criterion, optimizers, weights, epoch, wandb=No
             )
 
         # weighted loss sum
-        loss = w1 * l_reg + w2 * l_om + w3 * l_ml + w4 * l_vp
+        loss = w2 * l_om + w3 * l_ml + w4 * l_vp
         losses["loss"] += loss.item() * rgb.shape[0]
 
         # update parameters
@@ -50,14 +47,13 @@ def trainLoop(model, dataloader, criterion, optimizers, weights, epoch, wandb=No
 
         if i % 100 == 0:
             print(
-                f"\t @iter {i:<4}: l_reg={l_reg.item():>02.4f} l_om={l_om.item():>02.4f} l_ml={l_ml.item():>02.4f} l_vp={l_vp.item():>02.4f}"
+                f"\t @iter {i:<4}: l_om={l_om.item():>02.4f} l_ml={l_ml.item():>02.4f} l_vp={l_vp.item():>02.4f}"
             )
 
         if wandb:
             wandb.log(
                 {
                     "train/loss": loss.item(),
-                    "train/l_reg": l_reg.item(),
                     "train/l_om": l_om.item(),
                     "train/l_ml": l_ml.item(),
                     "train/l_vp": l_vp.item(),
@@ -65,36 +61,33 @@ def trainLoop(model, dataloader, criterion, optimizers, weights, epoch, wandb=No
                 },
             )
 
-    losses["l_reg"] /= len(dataloader.dataset)
     losses["l_om"] /= len(dataloader.dataset)
     losses["l_ml"] /= len(dataloader.dataset)
     losses["l_vp"] /= len(dataloader.dataset)
     losses["loss"] /= len(dataloader.dataset)
     print(
-        f"\t train loss: {losses['loss']:.4f} l_reg:{losses['l_reg']:.4f} l_om:{losses['l_om']:.4f} l_ml:{losses['l_ml']:.4f} l_vp:{losses['l_vp']:.4f}"
+        f"\t train loss: {losses['loss']:.4f} l_om:{losses['l_om']:.4f} l_ml:{losses['l_ml']:.4f} l_vp:{losses['l_vp']:.4f}"
     )
-    return (w1, w2, w3, w4)
+    return (w2, w3, w4)
 
 
 def evalLoop(model, dataloader, criterion, weights, epoch, wandb=None):
-    losses = {"l_reg": 0, "l_om": 0, "l_ml": 0, "l_vp": 0, "loss": 0}
-    w1, w2, w3, w4 = weights
+    losses = {"l_om": 0, "l_ml": 0, "l_vp": 0, "loss": 0}
+    w2, w3, w4 = weights
 
     for rgb, gridbox, seg, vpxy in tqdm(dataloader):
         rgb = rgb.to(DEVICE)
         out = model(rgb)
-        l_reg, l_om, l_ml, l_vp = criterion(out, gridbox, seg, vpxy)
-        losses["l_reg"] += l_reg.item() * rgb.shape[0]
+        l_om, l_ml, l_vp = criterion(out, gridbox, seg, vpxy)
         losses["l_om"] += l_om.item() * rgb.shape[0]
         losses["l_ml"] += l_ml.item() * rgb.shape[0]
         losses["l_vp"] += l_vp.item() * rgb.shape[0]
 
         # weighted loss sum
-        loss = w1 * l_reg + w2 * l_om + w3 * l_ml + w4 * l_vp
+        loss = w2 * l_om + w3 * l_ml + w4 * l_vp
         losses["loss"] += loss.item() * rgb.shape[0]
 
 
-    losses["l_reg"] /= len(dataloader.dataset)
     losses["l_om"] /= len(dataloader.dataset)
     losses["l_ml"] /= len(dataloader.dataset)
     losses["l_vp"] /= len(dataloader.dataset)
@@ -104,7 +97,6 @@ def evalLoop(model, dataloader, criterion, weights, epoch, wandb=None):
         wandb.log(
             {
                 "val/loss": losses["loss"],
-                "val/l_reg": losses["l_reg"],
                 "val/l_om": losses["l_om"],
                 "val/l_ml": losses["l_ml"],
                 "val/l_vp": losses["l_vp"],
@@ -112,9 +104,9 @@ def evalLoop(model, dataloader, criterion, weights, epoch, wandb=None):
             },
         )
     print(
-        f"\t   val loss: {losses['loss']:.4f} l_reg:{losses['l_reg']:.4f} l_om:{losses['l_om']:.4f} l_ml:{losses['l_ml']:.4f} l_vp:{losses['l_vp']:.4f}"
+        f"\t   val loss: {losses['loss']:.4f} l_om:{losses['l_om']:.4f} l_ml:{losses['l_ml']:.4f} l_vp:{losses['l_vp']:.4f}"
     )
-    return losses["l_reg"], losses["l_om"], losses["l_ml"], losses["l_vp"]
+    return losses["l_om"], losses["l_ml"], losses["l_vp"]
 
 
 if __name__ == "__main__":
@@ -132,9 +124,9 @@ if __name__ == "__main__":
     import os
     from datetime import datetime
 
-    train_ds = RoadDataset(train, transform=T.Compose([T.RandomHorizontalFlip()]))
+    train_ds = RoadDataset(train)
     # train_ds = RoadDataset(val, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
-    val_ds = RoadDataset(val, transform=T.Compose([T.RandomHorizontalFlip()]))
+    val_ds = RoadDataset(val)
 
     BATCH_SIZE = 20
     train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
@@ -144,7 +136,7 @@ if __name__ == "__main__":
     from tqdm import tqdm
     import torch
 
-    NOTES = "PHASE 2 TRAINING..."
+    NOTES = "..."
     DEVICE = "cuda:0"
     EPOCHS = 50
     LEARNING_RATE = 1e-2

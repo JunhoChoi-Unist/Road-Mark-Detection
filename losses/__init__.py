@@ -8,7 +8,6 @@ class FourTaskLoss(nn.Module):
         super(FourTaskLoss, self).__init__()
 
     def forward(self, out, gridbox, seg, vpxy):
-        l_reg = F.l1_loss(out[0], gridbox.to('cuda:0'))
         om = (seg > 0).long()
         l_om = F.cross_entropy(out[1], om.to('cuda:0'))
         ml_seg = torch.nn.functional.max_pool2d(seg, 2).long()
@@ -22,7 +21,7 @@ class FourTaskLoss(nn.Module):
                 vp[i][vp_y // 4 :, vp_x // 4 :] = 4
         l_vp = F.cross_entropy(out[3], vp.to('cuda:0'))
         
-        return l_reg, l_om, l_ml, l_vp
+        return l_om, l_ml, l_vp
 
 class VppTaskLoss(nn.Module):
     def __init__(self):
