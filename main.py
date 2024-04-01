@@ -144,7 +144,7 @@ if __name__ == "__main__":
     from tqdm import tqdm
     import torch
 
-    NOTES = "PHASE 2 TRAINING..."
+    NOTES = "..."
     DEVICE = "cuda:0"
     EPOCHS = 50
     LEARNING_RATE = 1e-2
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     WANDB = True
     # N_CLASSES = 17
     N_CLASSES = 63
-    PHASE = 2
+    PHASE = 1
 
     model = VPGNet(N_CLASSES).to(DEVICE)
     if PHASE == 2:
