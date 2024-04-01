@@ -132,11 +132,11 @@ if __name__ == "__main__":
     import os
     from datetime import datetime
 
-    train_ds = RoadDataset(train, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
+    train_ds = RoadDataset(train, transform=T.Compose([T.RandomHorizontalFlip()]))
     # train_ds = RoadDataset(val, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
-    val_ds = RoadDataset(val, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
+    val_ds = RoadDataset(val, transform=T.Compose([T.RandomHorizontalFlip()]))
 
-    BATCH_SIZE = 22
+    BATCH_SIZE = 20
     train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
     val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
 
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     from tqdm import tqdm
     import torch
 
-    NOTES = "VP convergence testing...."
+    NOTES = "PHASE 2 TRAINING..."
     DEVICE = "cuda:0"
     EPOCHS = 50
     LEARNING_RATE = 1e-2
@@ -156,7 +156,7 @@ if __name__ == "__main__":
 
     model = VPGNet(N_CLASSES).to(DEVICE)
     if PHASE == 2:
-        model.load_state_dict(torch.load("exps/0328-192942/03-5.8462.pt", map_location=DEVICE))
+        model.load_state_dict(torch.load("exps/0331-160619/18-5.5598.pt", map_location=DEVICE))
     criterion = FourTaskLoss()
     # TODO: temporary fix
     if PHASE == 1:

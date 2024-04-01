@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from torchvision import transforms as T
 from torch.utils.data import Dataset
 import numpy as np
 
@@ -21,10 +22,18 @@ class RoadDataset(Dataset):
 
         rgb = data[:, :, 0:3]
         seg = torch.Tensor(data[:, :, 3])
-        vp = data[:, :, 4]
+        vp = torch.Tensor(data[:, :, 4])
 
-        if self.transform is not None:
-            rgb = self.transform(rgb)
+        rgb = T.ToTensor()(rgb)
+
+        import random  
+        x = random.random()
+        if x > 0.5:
+            flipper = T.RandomHorizontalFlip(p=1)
+            rgb = flipper(rgb)
+            seg = flipper(seg)
+            vp = flipper(vp)
+
 
         # grid bbox-4x120x160
         grid_seg = (
