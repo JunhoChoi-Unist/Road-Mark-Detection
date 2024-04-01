@@ -270,7 +270,7 @@ if __name__ == "__main__":
                     del optimizers
                     del schedulers
                     optimizers = [
-                        torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+                        torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
                     ]
                     schedulers = [
                         torch.optim.lr_scheduler.StepLR(
