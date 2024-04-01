@@ -132,9 +132,9 @@ if __name__ == "__main__":
     import os
     from datetime import datetime
 
-    train_ds = RoadDataset(train, transform=T.Compose([T.RandomHorizontalFlip()]))
+    train_ds = RoadDataset(train)
     # train_ds = RoadDataset(val, transform=T.Compose([T.ToTensor(), T.RandomHorizontalFlip()]))
-    val_ds = RoadDataset(val, transform=T.Compose([T.RandomHorizontalFlip()]))
+    val_ds = RoadDataset(val)
 
     BATCH_SIZE = 20
     train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
