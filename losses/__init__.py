@@ -7,7 +7,7 @@ class FourTaskLoss(nn.Module):
     def __init__(self):
         super(FourTaskLoss, self).__init__()
 
-    def forward(self, out, gridbox, seg, vpxy):
+    def forward(self, out, seg, vpxy):
         om = (seg > 0).long()
         l_om = F.cross_entropy(out[1], om.to('cuda:0'))
         ml_seg = torch.nn.functional.max_pool2d(seg, 2).long()

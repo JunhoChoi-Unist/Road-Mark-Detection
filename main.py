@@ -2,12 +2,12 @@ def trainLoop(model, dataloader, criterion, optimizers, weights, epoch, wandb=No
     losses = {"l_om": 0, "l_ml": 0, "l_vp": 0, "loss": 0}
     w2, w3, w4 = weights
 
-    for i, (rgb, gridbox, seg, vpxy) in tqdm(
+    for i, (rgb, seg, vpxy) in tqdm(
         enumerate(dataloader), total=len(dataloader)
     ):
         rgb = rgb.to(DEVICE)
         out = model(rgb)
-        l_om, l_ml, l_vp = criterion(out, gridbox, seg, vpxy)
+        l_om, l_ml, l_vp = criterion(out, seg, vpxy)
         losses["l_om"] += l_om.item() * rgb.shape[0]
         losses["l_ml"] += l_ml.item() * rgb.shape[0]
         losses["l_vp"] += l_vp.item() * rgb.shape[0]
@@ -75,10 +75,10 @@ def evalLoop(model, dataloader, criterion, weights, epoch, wandb=None):
     losses = {"l_om": 0, "l_ml": 0, "l_vp": 0, "loss": 0}
     w2, w3, w4 = weights
 
-    for rgb, gridbox, seg, vpxy in tqdm(dataloader):
+    for rgb, seg, vpxy in tqdm(dataloader):
         rgb = rgb.to(DEVICE)
         out = model(rgb)
-        l_om, l_ml, l_vp = criterion(out, gridbox, seg, vpxy)
+        l_om, l_ml, l_vp = criterion(out, seg, vpxy)
         losses["l_om"] += l_om.item() * rgb.shape[0]
         losses["l_ml"] += l_ml.item() * rgb.shape[0]
         losses["l_vp"] += l_vp.item() * rgb.shape[0]
@@ -153,20 +153,18 @@ if __name__ == "__main__":
     # TODO: temporary fix
     if PHASE == 1:
         optimizer_0 = torch.optim.SGD(model.shared.parameters(), lr=LEARNING_RATE, momentum=0.9)
-        optimizer_1 = torch.optim.SGD(model.gridBox.parameters(), lr=0, momentum=0.9)
         optimizer_2 = torch.optim.SGD(model.objectMask.parameters(), lr=0, momentum=0.9)
         optimizer_3 = torch.optim.SGD(model.multiLabel.parameters(), lr=0, momentum=0.9)
         optimizer_4 = torch.optim.SGD(model.vpp.parameters(), lr=LEARNING_RATE, momentum=0.9)
-        w1, w2, w3, w4 = 0, 0, 0, 1.0
+        w2, w3, w4 = 0, 0, 1.0
     elif PHASE == 2:
         optimizer_0 = torch.optim.SGD(model.shared.parameters(), lr=LEARNING_RATE, momentum=0.9)
-        optimizer_1 = torch.optim.SGD(model.gridBox.parameters(), lr=LEARNING_RATE, momentum=0.9)
         optimizer_2 = torch.optim.SGD(model.objectMask.parameters(), lr=LEARNING_RATE, momentum=0.9)
         optimizer_3 = torch.optim.SGD(model.multiLabel.parameters(), lr=LEARNING_RATE, momentum=0.9)
         optimizer_4 = torch.optim.SGD(model.vpp.parameters(), lr=LEARNING_RATE, momentum=0.9)
-        w1, w2, w3, w4 = 0.4683, 0.3328, 0.05551, 0.1434
+        w2, w3, w4 = 0.3328, 0.05551, 0.1434
 
-    optimizers = [optimizer_0, optimizer_1, optimizer_2, optimizer_3, optimizer_4]
+    optimizers = [optimizer_0, optimizer_2, optimizer_3, optimizer_4]
     schedulers = [
         torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=0.7)
         for optimizer in optimizers
@@ -201,12 +199,12 @@ if __name__ == "__main__":
 
         # Start of the Training Loop
         model.train()
-        w1, w2, w3, w4 = trainLoop(
+        w2, w3, w4 = trainLoop(
             model,
             train_dl,
             criterion,
             optimizers,
-            weights=(w1, w2, w3, w4),
+            weights=(w2, w3, w4),
             epoch=epoch,
             wandb=run,
         )
@@ -214,11 +212,11 @@ if __name__ == "__main__":
         # Start of the Validation Loop
         model.eval()
         with torch.no_grad():
-            l_reg, l_om, l_ml, l_vp = evalLoop(
+            l_om, l_ml, l_vp = evalLoop(
                 model,
                 val_dl,
                 criterion,
-                weights=(w1, w2, w3, w4),
+                weights=(w2, w3, w4),
                 epoch=epoch,
                 wandb=run,
             )
@@ -226,17 +224,16 @@ if __name__ == "__main__":
         os.makedirs(SAVE_PATH, exist_ok=True)
         torch.save(
             model.state_dict(),
-            f"{SAVE_PATH}/{epoch:02}-{(l_reg+l_om+l_ml+l_vp):02.4f}.pt",
+            f"{SAVE_PATH}/{epoch:02}-{(l_om+l_ml+l_vp):02.4f}.pt",
         )
         print(
-            f"\t model saved as {SAVE_PATH}/{epoch:02}-{(l_reg+l_om+l_ml+l_vp):02.4f}.pt"
+            f"\t model saved as {SAVE_PATH}/{epoch:02}-{(l_om+l_ml+l_vp):02.4f}.pt"
         )
 
         if WANDB:
             run.log(
                 {
                     "lr/shared": optimizer_0.param_groups[0]["lr"],
-                    "lr/gridBox": optimizer_1.param_groups[0]["lr"],
                     "lr/objectMask": optimizer_2.param_groups[0]["lr"],
                     "lr/multiLabel": optimizer_3.param_groups[0]["lr"],
                     "lr/vpp": optimizer_4.param_groups[0]["lr"],
