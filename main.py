@@ -269,12 +269,15 @@ if __name__ == "__main__":
                     print("\nPHASE 2 ENTERED!")
                     del optimizers
                     del schedulers
-                    optimizers = [
-                        torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
-                    ]
+                    optimizer_0 = torch.optim.SGD(model.shared.parameters(), lr=LEARNING_RATE, momentum=0.9)
+                    optimizer_1 = torch.optim.SGD(model.gridBox.parameters(), lr=LEARNING_RATE, momentum=0.9)
+                    optimizer_2 = torch.optim.SGD(model.objectMask.parameters(), lr=LEARNING_RATE, momentum=0.9)
+                    optimizer_3 = torch.optim.SGD(model.multiLabel.parameters(), lr=LEARNING_RATE, momentum=0.9)
+                    optimizer_4 = torch.optim.SGD(model.vpp.parameters(), lr=LEARNING_RATE, momentum=0.9)
+                    optimizers = [optimizer_0, optimizer_1, optimizer_2, optimizer_3, optimizer_4]
                     schedulers = [
                         torch.optim.lr_scheduler.StepLR(
-                            optimizer=optimizers[0], step_size=5, gamma=0.7
-                        )
+                            optimizer=optimizer, step_size=5, gamma=0.7
+                        ) for optimizer in optimizers
                     ]
 
