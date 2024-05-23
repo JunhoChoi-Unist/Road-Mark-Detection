@@ -5,4 +5,4 @@ Figures/
 Logs/
 Notebooks/
 Tmp/
-**__pycache__**
+**/__pycache__/**

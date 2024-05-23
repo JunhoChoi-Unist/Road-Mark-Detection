@@ -79,6 +79,7 @@ if __name__ == "__main__":
         if best_loss > train_loss:
             best_loss = train_loss
             torch.save(model.state_dict(), best_checkpoint_path)
+            print('\033[1;32m' + f'model weight saved as {best_checkpoint_path}' + '\033[0m')
 
         print(epoch)
         print(f'train loss: {train_loss:.3f}')
