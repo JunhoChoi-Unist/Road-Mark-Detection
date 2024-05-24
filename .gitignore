@@ -1,8 +1,8 @@
 .vscode/
 Checkpoints/
-Data/
+Data/*
 Figures/
-Logs/
+Logs/*
 Notebooks/
 Tmp/
 **/__pycache__/**
