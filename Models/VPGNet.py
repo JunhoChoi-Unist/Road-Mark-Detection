@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class VPPNet(nn.Module):
+class VPGNet(nn.Module):
     def __init__(self, n_classes=17, phase=2):
         super(VPPNet, self).__init__()
         self.n_classes = n_classes

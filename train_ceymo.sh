@@ -12,6 +12,7 @@ C:/Users/aaaa/miniconda3/envs/lane/python.exe d:/scripts/lane-and-road-marking-d
    --max_lr 1 \
    --batch_size 50 \
    --save_path "D:/checkpoints/CeyMo/" \
+   --load_checkpoint "D:/checkpoints/CeyMo/run_0527_221148/best.pt" \
  > $LOG_FILE 2>&1
 
 # Check the exit status of the Python script

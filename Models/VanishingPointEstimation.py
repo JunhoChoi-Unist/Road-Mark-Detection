@@ -23,6 +23,16 @@ class InceptionV3Backbone(nn.Module):
         x = self.features(x)
         return x
 
+class FullInceptionV3Backbone(nn.Module):
+    def __init__(self):
+        super(FullInceptionV3Backbone, self).__init__()
+        self.features = nn.Sequential(*list(inception.children())[:15],*list(inception.children())[16:18])  # out: Nx768x17x17
+        self.out_channels = 2048
+    
+    def forward(self, x):
+        x = self.features(x)
+        return x
+
 class VPPNet(nn.Module):
     ''' 
     input: 3x299x299 image
@@ -58,6 +68,27 @@ class MaskRCNNWithInceptionV3(nn.Module):
     def __init__(self, num_classes):
         super(MaskRCNNWithInceptionV3, self).__init__()
         self.backbone = InceptionV3Backbone()
+
+        # Define the RPN anchor generator
+        rpn_anchor_generator = AnchorGenerator(sizes=((32, 64, 128, 256, 512),),
+                                               aspect_ratios=((0.5, 1.0, 2.0),) * 5)
+
+        # Define the RoI align layer
+        roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0'], output_size=7, sampling_ratio=2)
+
+        # Create the Mask R-CNN model
+        self.model = MaskRCNN(backbone=self.backbone,
+                              num_classes=num_classes,
+                              rpn_anchor_generator=rpn_anchor_generator,
+                              box_roi_pool=roi_pooler)
+
+    def forward(self, images, targets=None):
+        return self.model(images, targets)
+
+class MaskRCNNVanilla(nn.Module):
+    def __init__(self, num_classes):
+        super(MaskRCNNVanilla, self).__init__()
+        self.backbone = FullInceptionV3Backbone()
 
         # Define the RPN anchor generator
         rpn_anchor_generator = AnchorGenerator(sizes=((32, 64, 128, 256, 512),),

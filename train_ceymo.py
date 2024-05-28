@@ -2,7 +2,7 @@ from RoadDataset import CeyMoDataset
 from torch.utils.data import DataLoader
 
 import os
-from Models import MaskRCNNWithInceptionV3
+from Models import MaskRCNNWithInceptionV3 ,MaskRCNNVanilla
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -25,6 +25,9 @@ if __name__ == "__main__":
     print(args)
 
     
+    model = MaskRCNNVanilla(num_classes=20).to(device)
+
+    '''
     model = MaskRCNNWithInceptionV3(num_classes=20).to(device)
     model_state_dict = model.state_dict()
     pretrained_weight = torch.load('D:/checkpoints/Inception_v3/run_0522_030212/best.pt')
@@ -34,13 +37,19 @@ if __name__ == "__main__":
     model_state_dict.update(inception_weight)
     model.load_state_dict(model_state_dict)
 
+    if args.load_checkpoint:
+        pretrained_weight = torch.load(args.load_checkpoint)
+        model_state_dict.update(pretrained_weight)  
+        model.load_state_dict(model_state_dict)
+    '''
+
     train_ds = CeyMoDataset('./Data/CeyMo/train')
-    train_dl = DataLoader(train_ds, 5, shuffle=True, collate_fn=lambda x: tuple(zip(*x)))
+    train_dl = DataLoader(train_ds, 4, shuffle=True, collate_fn=lambda x: tuple(zip(*x)))
     # val_ds = CeyMoDataset('./Data/Val', phase=2)
     # val_dl = DataLoader(val_ds, 5, shuffle=False, collate_fn=lambda x: tuple(zip(*x)))
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3)
     num_epochs = 50
     best_loss = np.inf
     checkpoint_dir = os.path.join(args.save_path, f"run_{args.timestamp}")
